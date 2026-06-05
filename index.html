@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Alert Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Main Container -->
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1 class="app-title">
+                        <span class="title-icon">⚠️</span>
+                        Disaster Alert Dashboard
+                    </h1>
+                    <p class="app-subtitle">AI-Powered Real-Time Disaster Monitoring</p>
+                </div>
+                <div class="header-right">
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Live</span>
+                    </div>
+                    <button class="theme-toggle" id="themeToggle" title="Toggle dark/light mode">
+                        🌙
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Summary Section -->
+            <section class="summary-section">
+                <div class="summary-cards">
+                    <div class="summary-card critical">
+                        <div class="card-number" id="criticalCount">0</div>
+                        <div class="card-label">Critical</div>
+                    </div>
+                    <div class="summary-card high">
+                        <div class="card-number" id="highCount">0</div>
+                        <div class="card-label">High Risk</div>
+                    </div>
+                    <div class="summary-card medium">
+                        <div class="card-number" id="mediumCount">0</div>
+                        <div class="card-label">Medium Risk</div>
+                    </div>
+                    <div class="summary-card low">
+                        <div class="card-number" id="lowCount">0</div>
+                        <div class="card-label">Low Risk</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Controls Section -->
+            <section class="controls-section">
+                <div class="control-group">
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        class="search-input" 
+                        placeholder="🔍 Search by location..."
+                        aria-label="Search alerts by location"
+                    >
+                </div>
+                <div class="control-group">
+                    <select id="filterSelect" class="filter-select" aria-label="Filter by disaster type">
+                        <option value="all">All Disaster Types</option>
+                        <option value="flood">🌊 Floods</option>
+                        <option value="cyclone">🌪️ Cyclones</option>
+                        <option value="heatwave">🔥 Heatwaves</option>
+                        <option value="rainfall">💧 Heavy Rainfall</option>
+                        <option value="landslide">🏔️ Landslides</option>
+                        <option value="earthquake">📍 Earthquakes</option>
+                        <option value="storm">⛈️ Storms</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <button id="refreshBtn" class="refresh-btn" title="Manually refresh data">
+                        🔄 Refresh Now
+                    </button>
+                </div>
+                <div class="control-group">
+                    <span class="last-update" id="lastUpdate">Last updated: --</span>
+                </div>
+            </section>
+
+            <!-- Main Grid Layout -->
+            <div class="content-grid">
+                <!-- Left Column: Alerts Panel -->
+                <aside class="alerts-panel">
+                    <div class="panel-header">
+                        <h2>📋 Recent Alerts</h2>
+                        <span class="alert-count" id="alertCountBadge">0</span>
+                    </div>
+                    <div class="alerts-container" id="alertsContainer">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <p>Loading alerts...</p>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Right Column: Analysis Sections -->
+                <div class="analysis-column">
+                    <!-- AI Reasoning Panel -->
+                    <section class="ai-reasoning-panel">
+                        <div class="panel-header">
+                            <h2>🤖 AI Reasoning Agent</h2>
+                            <span class="ai-badge">Active</span>
+                        </div>
+                        <div class="reasoning-content" id="reasoningContent">
+                            <div class="placeholder-content">
+                                <p>Select an alert to view AI analysis and reasoning.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Recommended Actions Panel -->
+                    <section class="actions-panel">
+                        <div class="panel-header">
+                            <h2>✅ Recommended Actions</h2>
+                        </div>
+                        <div class="actions-content" id="actionsContent">
+                            <div class="placeholder-content">
+                                <p>Select an alert to view recommended actions.</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Emergency Resources Section -->
+            <section class="emergency-resources">
+                <h2>🚨 Emergency Resources</h2>
+                <div class="resources-grid">
+                    <div class="resource-card">
+                        <h3>Preparedness Checklist</h3>
+                        <ul>
+                            <li>✓ Prepare emergency kit (water, food, first aid)</li>
+                            <li>✓ Know evacuation routes</li>
+                            <li>✓ Keep important documents in safe place</li>
+                            <li>✓ Register for emergency alerts</li>
+                            <li>✓ Establish family communication plan</li>
+                        </ul>
+                    </div>
+                    <div class="resource-card">
+                        <h3>General Safety Instructions</h3>
+                        <ul>
+                            <li>Stay informed through official channels</li>
+                            <li>Follow local authority instructions</li>
+                            <li>Avoid disaster-affected areas</li>
+                            <li>Help neighbors and vulnerable people</li>
+                            <li>Document damages for insurance</li>
+                        </ul>
+                    </div>
+                    <div class="resource-card">
+                        <h3>Emergency Contacts</h3>
+                        <ul>
+                            <li><strong>Emergency:</strong> 911 / 999</li>
+                            <li><strong>Disaster Relief:</strong> Local authority</li>
+                            <li><strong>Weather Service:</strong> National agency</li>
+                            <li><strong>Red Cross:</strong> Relief organization</li>
+                            <li><strong>Local Police:</strong> Emergency services</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 Disaster Alert Dashboard | AI-Powered Monitoring System | Updates every 5 minutes</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
