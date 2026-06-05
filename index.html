@@ -3,102 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Disaster Alert Dashboard - Microsoft Hackathon</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Disaster Intelligence Copilot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css">
-</head>
+    <link rel="manifest" href="manifest.json"> </head>
 <body>
+    <audio id="sirenAudio" src="https://actions.google.com/sounds/v1/alarms/warning_siren.ogg" preload="auto"></audio>
+
     <div class="app-container">
-        <header class="header">
+        <button id="sosBtn" class="sos-button" aria-label="Trigger Emergency SOS">SOS</button>
+
+        <header class="header glass-panel">
             <div class="header-content">
-                <div class="header-left">
-                    <h1 class="app-title"><span class="title-icon">⚠️</span> Alert Dashboard</h1>
-                </div>
-                <div class="header-right">
+                <h1 class="app-title">⚠️ Intelligence Platform</h1>
+                <div class="header-controls">
+                    <select id="langSelect" class="lang-selector">
+                        <option value="en">English</option>
+                        <option value="hi">हिन्दी</option>
+                        <option value="bn">বাংলা</option>
+                    </select>
                     <div class="status-indicator">
-                        <span class="status-dot animate-pulse"></span>
-                        <span class="status-text">Live</span>
+                        <span id="networkStatus" class="status-dot animate-pulse"></span>
+                        <span id="networkText">Online</span>
                     </div>
-                    <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
                 </div>
             </div>
         </header>
 
         <main class="main-content">
-            <section class="weather-section">
-                <div class="weather-card" id="weatherCard">
-                    <div class="weather-loading">
-                        <div class="spinner"></div>
-                        <p>Syncing telemetry...</p>
+            <section class="top-dashboard grid-2">
+                <div class="glass-card location-card">
+                    <h3 data-i18n="location">Detected Zone</h3>
+                    <h2 id="geoCity">Acquiring Satellites...</h2>
+                    <p id="geoRegion" class="text-muted">--</p>
+                </div>
+                <div class="glass-card readiness-card text-center">
+                    <h3 data-i18n="safetyScore">Safety Score</h3>
+                    <div class="circular-score" id="safetyScoreRing">
+                        <span id="safetyScoreTxt">--</span>
                     </div>
                 </div>
             </section>
 
-            <section class="summary-section">
-                <div class="summary-cards">
-                    <div class="summary-card critical">
-                        <div class="card-number" id="criticalCount">0</div>
-                        <div class="card-label">Critical</div>
+            <section class="glass-card map-section">
+                <h3>🗺️ Live Threat Map</h3>
+                <div id="disasterMap" class="map-container"></div>
+            </section>
+
+            <section class="glass-card emergency-section" id="emergencyPanel">
+                <h3 data-i18n="emergency">Local Emergency Routing</h3>
+                <div class="resources-grid" id="emergencyGrid">
                     </div>
-                    <div class="summary-card high">
-                        <div class="card-number" id="highCount">0</div>
-                        <div class="card-label">High</div>
-                    </div>
-                    <div class="summary-card medium">
-                        <div class="card-number" id="mediumCount">0</div>
-                        <div class="card-label">Medium</div>
-                    </div>
-                    <div class="summary-card low">
-                        <div class="card-number" id="lowCount">0</div>
-                        <div class="card-label">Low</div>
-                    </div>
-                </div>
             </section>
 
             <div class="content-grid">
-                <aside class="alerts-panel">
-                    <div class="panel-header">
-                        <h2>📋 Threat Log</h2>
-                        <span class="alert-count" id="alertCountBadge">0</span>
-                    </div>
-                    <div class="alerts-container" id="alertsContainer">
-                        <div class="loading-spinner">
-                            <div class="spinner"></div>
-                        </div>
-                    </div>
+                <aside class="alerts-panel glass-card">
+                    <h2>📋 Active Threats</h2>
+                    <div id="alertsContainer" class="alerts-container"></div>
                 </aside>
 
-                <div class="analysis-column">
-                    <section class="ai-reasoning-panel">
-                        <div class="panel-header">
-                            <h2>🤖 Copilot Agent</h2>
-                            <span class="ai-badge">Active</span>
-                        </div>
-                        
-                        <div class="risk-meter-container hidden" id="riskMeterContainer">
-                            <span style="font-size: 12px; font-weight: bold; color: var(--text-muted);">THREAT LEVEL:</span>
-                            <div class="risk-meter-bg">
-                                <div class="risk-meter-fill" id="riskMeterFill"></div>
-                            </div>
-                        </div>
-
-                        <div class="reasoning-content" id="reasoningContent">
-                            <p style="color: var(--text-muted); font-size: 14px;">Awaiting telemetry data...</p>
-                        </div>
-                    </section>
-
-                    <section class="actions-panel">
-                        <div class="panel-header">
-                            <h2>✅ Recommended Actions</h2>
-                        </div>
-                        <div class="actions-content" id="actionsContent">
-                            <p style="color: var(--text-muted); font-size: 14px;">Actions will generate after analysis.</p>
-                        </div>
-                    </section>
+                <div class="analysis-column glass-card">
+                    <h2>🤖 Copilot Analysis</h2>
+                    <div id="reasoningContent">Awaiting data stream...</div>
                 </div>
             </div>
         </main>
     </div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
