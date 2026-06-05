@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Disaster Alert Dashboard - Microsoft Hackathon</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,20 +12,14 @@
         <header class="header">
             <div class="header-content">
                 <div class="header-left">
-                    <h1 class="app-title">
-                        <span class="title-icon">⚠️</span>
-                        Disaster Alert Dashboard
-                    </h1>
-                    <p class="app-subtitle">AI-Powered Real-Time Disaster Monitoring</p>
+                    <h1 class="app-title"><span class="title-icon">⚠️</span> Alert Dashboard</h1>
                 </div>
                 <div class="header-right">
                     <div class="status-indicator">
                         <span class="status-dot animate-pulse"></span>
-                        <span class="status-text">Live Monitoring</span>
+                        <span class="status-text">Live</span>
                     </div>
-                    <button class="theme-toggle" id="themeToggle" title="Toggle dark/light mode">
-                        🌙
-                    </button>
+                    <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
                 </div>
             </div>
         </header>
@@ -37,7 +29,7 @@
                 <div class="weather-card" id="weatherCard">
                     <div class="weather-loading">
                         <div class="spinner"></div>
-                        <p>Accessing browser geolocation and polling Open-Meteo API...</p>
+                        <p>Syncing telemetry...</p>
                     </div>
                 </div>
             </section>
@@ -46,65 +38,32 @@
                 <div class="summary-cards">
                     <div class="summary-card critical">
                         <div class="card-number" id="criticalCount">0</div>
-                        <div class="card-label">Critical Threat</div>
+                        <div class="card-label">Critical</div>
                     </div>
                     <div class="summary-card high">
                         <div class="card-number" id="highCount">0</div>
-                        <div class="card-label">High Risk</div>
+                        <div class="card-label">High</div>
                     </div>
                     <div class="summary-card medium">
                         <div class="card-number" id="mediumCount">0</div>
-                        <div class="card-label">Medium Risk</div>
+                        <div class="card-label">Medium</div>
                     </div>
                     <div class="summary-card low">
                         <div class="card-number" id="lowCount">0</div>
-                        <div class="card-label">Low Risk</div>
+                        <div class="card-label">Low</div>
                     </div>
-                </div>
-            </section>
-
-            <section class="controls-section">
-                <div class="control-group search-wrapper">
-                    <input 
-                        type="text" 
-                        id="searchInput" 
-                        class="search-input" 
-                        placeholder="🔍 Search alerts by location..."
-                        aria-label="Search alerts by location"
-                    >
-                </div>
-                <div class="control-group">
-                    <select id="filterSelect" class="filter-select" aria-label="Filter by disaster type">
-                        <option value="all">All Disaster Types</option>
-                        <option value="flood">Waves / Floods 🌊</option>
-                        <option value="cyclone">Cyclones 🌪️</option>
-                        <option value="heatwave">Heatwaves 🔥</option>
-                        <option value="rainfall">Heavy Rainfall 💧</option>
-                        <option value="landslide">Landslides 🏔️</option>
-                        <option value="earthquake">Earthquakes 📍</option>
-                        <option value="storm">Severe Storms ⛈️</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <button id="refreshBtn" class="refresh-btn" title="Manually refresh data">
-                        🔄 Refresh Matrix
-                    </button>
-                </div>
-                <div class="control-group text-muted">
-                    <span class="last-update" id="lastUpdate">System Status: Awaiting telemetry...</span>
                 </div>
             </section>
 
             <div class="content-grid">
                 <aside class="alerts-panel">
                     <div class="panel-header">
-                        <h2>📋 Detected Threats Log</h2>
+                        <h2>📋 Threat Log</h2>
                         <span class="alert-count" id="alertCountBadge">0</span>
                     </div>
                     <div class="alerts-container" id="alertsContainer">
                         <div class="loading-spinner">
                             <div class="spinner"></div>
-                            <p>Parsing operational streams...</p>
                         </div>
                     </div>
                 </aside>
@@ -112,79 +71,34 @@
                 <div class="analysis-column">
                     <section class="ai-reasoning-panel">
                         <div class="panel-header">
-                            <h2>🤖 Copilot Reasoning Agent</h2>
-                            <span class="ai-badge">Agent Active</span>
+                            <h2>🤖 Copilot Agent</h2>
+                            <span class="ai-badge">Active</span>
                         </div>
                         
                         <div class="risk-meter-container hidden" id="riskMeterContainer">
-                            <span class="meter-label">Threat Severity Level:</span>
+                            <span style="font-size: 12px; font-weight: bold; color: var(--text-muted);">THREAT LEVEL:</span>
                             <div class="risk-meter-bg">
                                 <div class="risk-meter-fill" id="riskMeterFill"></div>
                             </div>
                         </div>
 
                         <div class="reasoning-content" id="reasoningContent">
-                            <div class="placeholder-content">
-                                <p>Select a live telemetry point from the log to initialize the 4-step AI agent verification protocol.</p>
-                            </div>
+                            <p style="color: var(--text-muted); font-size: 14px;">Awaiting telemetry data...</p>
                         </div>
                     </section>
 
                     <section class="actions-panel">
                         <div class="panel-header">
-                            <h2>✅ Decision Support & Recommendations</h2>
+                            <h2>✅ Recommended Actions</h2>
                         </div>
                         <div class="actions-content" id="actionsContent">
-                            <div class="placeholder-content">
-                                <p>Action items will generate dynamically after agent reasoning is compiled.</p>
-                            </div>
+                            <p style="color: var(--text-muted); font-size: 14px;">Actions will generate after analysis.</p>
                         </div>
                     </section>
                 </div>
             </div>
-
-            <section class="emergency-resources">
-                <h2>🚨 Enterprise Emergency Preparedness Matrix</h2>
-                <div class="resources-grid">
-                    <div class="resource-card">
-                        <h3>Standard Logistics Kit</h3>
-                        <ul>
-                            <li>✓ Emergency rations & medical provisions</li>
-                            <li>✓ Secondary power grids (powerbanks/radio)</li>
-                            <li>✓ Secure local topological evacuation routing</li>
-                            <li>✓ Encrypted critical documentation storage</li>
-                            <li>✓ Multi-tier family emergency routing schema</li>
-                        </ul>
-                    </div>
-                    <div class="resource-card">
-                        <h3>Incident Management</h3>
-                        <ul>
-                            <li>Monitor real-time meteorological advisories</li>
-                            <li>Execute instructions from civil authorities immediately</li>
-                            <li>Isolate points of entry to counter infrastructure damage</li>
-                            <li>Provide secondary civilian mutual aid safely</li>
-                            <li>Maintain damage ledgers for structural validation</li>
-                        </ul>
-                    </div>
-                    <div class="resource-card">
-                        <h3>Critical Communications</h3>
-                        <ul>
-                            <li><strong>Emergency Dispatch:</strong> 911 / 999</li>
-                            <li><strong>NDMA / Local Response:</strong> Civil Authority</li>
-                            <li><strong>Hydrological & Met Support:</strong> Primary Station</li>
-                            <li><strong>Logistical Aid:</strong> Red Cross / Red Crescent</li>
-                            <li><strong>Local Law Enforcement:</strong> Perimeter Control</li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
         </main>
-
-        <footer class="footer">
-            <p>&copy; 2026 Disaster Alert Dashboard | Built for Microsoft Hackathon Challenge | Architecture: Automated Reasoners Framework</p>
-        </footer>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>
