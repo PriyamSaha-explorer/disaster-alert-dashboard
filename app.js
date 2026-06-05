@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
             sosActive: "EMERGENCY SOS BROADCAST ACTIVE",
             weatherFeels: "Feels Like", weatherWind: "Wind Speed", weatherHum: "Humidity",
             emDisaster: "Disaster/General", emPolice: "Police", emAmbulance: "Ambulance", emFire: "Fire",
-            diagTitle: "Copilot Diagnostic:",
+            diagTitle: "NEURAL ENGINE DIAGNOSTIC",
             diagDesc: "Local environmental factors are being continuously monitored against structural safety thresholds.",
             optTitle: "✅ Optimal Conditions", optMsg: "All local telemetry nominal. No immediate threats.",
             floodTitle: "🌊 Flash Flood Risk", floodMsg: "Severe precipitation detected. Infrastructure flooding imminent.",
@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
             sosActive: "आपातकालीन एसओएस सक्रिय",
             weatherFeels: "महसूस होता है", weatherWind: "हवा की गति", weatherHum: "नमी",
             emDisaster: "आपदा/सामान्य", emPolice: "पुलिस", emAmbulance: "एम्बुलेंस", emFire: "आग",
-            diagTitle: "कोपायलट डायग्नोस्टिक:",
+            diagTitle: "न्यूरल इंजन डायग्नोस्टिक",
             diagDesc: "स्थानीय पर्यावरणीय कारकों की संरचनात्मक सुरक्षा सीमाओं के खिलाफ लगातार निगरानी की जा रही है।",
             optTitle: "✅ अनुकूल परिस्थितियाँ", optMsg: "सभी स्थानीय टेलीमेट्री सामान्य हैं। कोई तत्काल खतरा नहीं।",
             floodTitle: "🌊 अचानक बाढ़ का खतरा", floodMsg: "भारी वर्षा का पता चला। बुनियादी ढांचे में बाढ़ आसन्न है।",
@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
             sosActive: "জরুরী এসওএস সক্রিয়",
             weatherFeels: "অনুভূত হয়", weatherWind: "বাতাসের গতি", weatherHum: "আর্দ্রতা",
             emDisaster: "বিপর্যয়/সাধারণ", emPolice: "পুলিশ", emAmbulance: "অ্যাম্বুলেন্স", emFire: "আগুন",
-            diagTitle: "কোপাইলট ডায়াগনস্টিক:",
+            diagTitle: "নিউরাল ইঞ্জিন ডায়াগনস্টিক",
             diagDesc: "কাঠামোগত নিরাপত্তা থ্রেশহোল্ডের বিপরীতে স্থানীয় পরিবেশগত কারণগুলি ক্রমাগত পর্যবেক্ষণ করা হচ্ছে।",
             optTitle: "✅ অনুকূল পরিস্থিতি", optMsg: "সমস্ত স্থানীয় টেলিমেট্রি স্বাভাবিক। কোনো তাৎক্ষণিক হুমকি নেই।",
             floodTitle: "🌊 আকস্মিক বন্যার ঝুঁকি", floodMsg: "প্রচুর বৃষ্টিপাত সনাক্ত করা হয়েছে। অবকাঠামো প্লাবিত হওয়ার আশঙ্কা।",
@@ -55,10 +55,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // Helper to get current translations
     const getT = () => i18n[document.getElementById('langSelect').value] || i18n['en'];
 
-    // Update static HTML text
     function updateStaticText() {
         const t = getT();
         document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -67,10 +65,8 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Language dropdown listener
     document.getElementById('langSelect').addEventListener('change', () => {
         updateStaticText();
-        // Re-trigger location logic to instantly translate dynamic content
         fetchTelemetry(); 
     });
 
@@ -81,7 +77,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('networkText').textContent = isOnline ? getT().online : getT().offline;
     }
 
-    // --- 2. EMERGENCY ROUTING ---
     const EMERGENCY_DB = {
         "IN": { police: "100", fire: "101", ambulance: "108", disaster: "112" },
         "US": { police: "911", fire: "911", ambulance: "911", disaster: "911" },
@@ -89,7 +84,6 @@ document.addEventListener("DOMContentLoaded", () => {
         "DEFAULT": { police: "112", fire: "112", ambulance: "112", disaster: "112" }
     };
 
-    // --- 3. MAP & LOCATION LOGIC ---
     let map;
     let userMarker;
     let lastLat, lastLon;
@@ -147,7 +141,6 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     }
 
-    // --- 4. AI RISK ENGINE ---
     function processRiskEngine(w, lat, lon) {
         const t = getT();
         const alerts = [];
@@ -187,9 +180,24 @@ document.addEventListener("DOMContentLoaded", () => {
         renderAlerts(alerts, w);
     }
 
-    function renderAlerts(alerts, w) {
+    // --- UTILITY: SLEEP FUNCTION FOR AI STREAMING ---
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // --- UTILITY: TYPEWRITER EFFECT ---
+    async function typeWriter(element, text, speed = 15) {
+        element.innerHTML = '';
+        for (let i = 0; i < text.length; i++) {
+            element.innerHTML += text.charAt(i);
+            await sleep(speed);
+        }
+    }
+
+    // --- NEW: ASYNC AI BEAST RENDERER ---
+    async function renderAlerts(alerts, w) {
         const t = getT();
         const container = document.getElementById('alertsContainer');
+        
+        // Render the Active Threats list immediately
         container.innerHTML = alerts.map(a => `
             <div class="alert-item" style="border-left-color: ${a.severity === 'critical' ? 'var(--danger)' : a.severity === 'high' ? 'var(--warning)' : 'var(--safe)'}">
                 <strong>${a.type}</strong><br>
@@ -197,7 +205,11 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `).join('');
         
-        document.getElementById('reasoningContent').innerHTML = `
+        // Grab the reasoning content container
+        const reasoningBox = document.getElementById('reasoningContent');
+        
+        // Initial AI Terminal Setup
+        reasoningBox.innerHTML = `
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                 <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
                     <div style="font-size: 11px; color: var(--text-muted);">${t.weatherFeels}</div>
@@ -212,14 +224,43 @@ document.addEventListener("DOMContentLoaded", () => {
                     <strong>${w.wind_speed_10m} km/h</strong>
                 </div>
             </div>
-            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; border-left: 4px solid var(--accent);">
-                <p style="font-size: 12px; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; font-weight: 800;">${t.diagTitle}</p>
-                <p style="font-size: 15px; line-height: 1.5;">${alerts[0].msg} ${t.diagDesc}</p>
+            <div class="ai-processing-box">
+                <div class="ai-title-glitch">${t.diagTitle}</div>
+                <div id="ai-terminal-logs"></div>
+                <div id="ai-final-text" class="typewriter-text blinking-cursor" style="display: none;"></div>
             </div>
         `;
+
+        const terminalLogs = document.getElementById('ai-terminal-logs');
+        const finalText = document.getElementById('ai-final-text');
+
+        // Simulated AI "Thinking" Logs
+        const logsToPrint = [
+            `> Initializing environmental scan at coordinates [${lastLat.toFixed(2)}, ${lastLon.toFixed(2)}]...`,
+            `> Correlating open-meteo telemetry... T:${w.temperature_2m}°C, H:${w.relative_humidity_2m}%`,
+            `> Querying historical disaster thresholds...`,
+            `> Evaluating multi-variate risk vectors...`,
+            `> Compiling final directives...`
+        ];
+
+        // Stream the logs
+        for (let log of logsToPrint) {
+            const p = document.createElement('div');
+            p.className = 'terminal-log';
+            p.textContent = log;
+            terminalLogs.appendChild(p);
+            await sleep(300); // Wait 300ms between thoughts
+        }
+
+        await sleep(500); // Pause for dramatic effect
+
+        // Show the final typewriter text
+        finalText.style.display = "block";
+        const finalDiagnostic = `${alerts[0].msg} ${t.diagDesc}`;
+        await typeWriter(finalText, finalDiagnostic, 20); // Type at 20ms per character
     }
 
-    // --- 5. SOS EMERGENCY MODE ---
+    // --- SOS EMERGENCY MODE ---
     document.getElementById('sosBtn').addEventListener('click', () => {
         document.body.classList.toggle('emergency-mode-active');
         const audio = document.getElementById('sirenAudio');
@@ -230,14 +271,14 @@ document.addEventListener("DOMContentLoaded", () => {
             if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]); 
             
             document.getElementById('reasoningContent').innerHTML = `
-                <div style="background: rgba(239, 68, 68, 0.2); padding: 20px; border-radius: 12px; text-align: center; border: 2px solid var(--danger);">
-                    <h2 style="color: white;">⚠️ ${t.sosActive}</h2>
+                <div style="background: rgba(239, 68, 68, 0.2); padding: 40px 20px; border-radius: 12px; text-align: center; border: 2px solid var(--danger);">
+                    <h2 style="color: white; font-size: 24px; animation: pulse 1s infinite;">⚠️ ${t.sosActive}</h2>
                 </div>
             `;
         } else {
             audio.pause(); audio.currentTime = 0;
             if (navigator.vibrate) navigator.vibrate(0);
-            fetchTelemetry(); // Reset UI
+            fetchTelemetry(); 
         }
     });
 
