@@ -1,292 +1,208 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // --- STATE & CONFIG ---
-    const CONFIG = {
-        refreshInterval: 300000, // 5 minutes
-        defaultLocation: { lat: 22.5726, lon: 88.3639 } // Default to India/Kolkata context if GPS fails
+    // --- 1. OFFLINE SERVICE WORKER REGISTRATION ---
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(() => console.log('Offline Copilot Active'))
+            .catch(err => console.log('SW Registration failed', err));
+    }
+
+    // Network Status Monitoring
+    window.addEventListener('online', () => updateNetworkUI(true));
+    window.addEventListener('offline', () => updateNetworkUI(false));
+    function updateNetworkUI(isOnline) {
+        document.getElementById('networkStatus').style.background = isOnline ? 'var(--safe)' : 'var(--danger)';
+        document.getElementById('networkText').textContent = isOnline ? 'Online' : 'Offline Mode';
+    }
+
+    // --- 2. MULTILINGUAL DICTIONARY ---
+    const i18n = {
+        en: { location: "Detected Zone", safetyScore: "Safety Score", emergency: "Local Emergency Routing", sosActive: "EMERGENCY SOS BROADCAST ACTIVE" },
+        hi: { location: "पता लगाया गया क्षेत्र", safetyScore: "सुरक्षा स्कोर", emergency: "स्थानीय आपातकालीन मार्ग", sosActive: "आपातकालीन एसओएस सक्रिय" },
+        bn: { location: "শনাক্তকৃত অঞ্চল", safetyScore: "নিরাপত্তা স্কোর", emergency: "স্থানীয় জরুরি যোগাযোগ", sosActive: "জরুরী এসওএস সক্রিয়" }
     };
 
+    document.getElementById('langSelect').addEventListener('change', (e) => {
+        const lang = e.target.value;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (i18n[lang] && i18n[lang][key]) el.textContent = i18n[lang][key];
+        });
+    });
+
+    // --- 3. DYNAMIC EMERGENCY ROUTING ---
     const EMERGENCY_DB = {
-        "IN": { country: "India", police: "100", fire: "101", ambulance: "108", generic: "112" },
-        "US": { country: "United States", police: "911", fire: "911", ambulance: "911", generic: "911" },
-        "GB": { country: "United Kingdom", police: "999", fire: "999", ambulance: "999", generic: "112" },
-        "AU": { country: "Australia", police: "000", fire: "000", ambulance: "000", generic: "000" },
-        "CA": { country: "Canada", police: "911", fire: "911", ambulance: "911", generic: "911" },
-        "DEFAULT": { country: "Global Standard", generic: "112 / 911" }
+        "IN": { police: "100", fire: "101", ambulance: "108", disaster: "112" },
+        "US": { police: "911", fire: "911", ambulance: "911", disaster: "911" },
+        "GB": { police: "999", fire: "999", ambulance: "999", disaster: "112" },
+        "DEFAULT": { police: "112", fire: "112", ambulance: "112", disaster: "112" }
     };
 
-    // --- DOM ELEMENTS ---
-    const DOM = {
-        weatherCard: document.getElementById("weatherCard"),
-        alertsContainer: document.getElementById("alertsContainer"),
-        reasoningContent: document.getElementById("reasoningContent"),
-        actionsContent: document.getElementById("actionsContent"),
-        resourcesGrid: document.querySelector(".resources-grid"),
-        themeToggle: document.getElementById("themeToggle")
-    };
+    // --- 4. LEAFLET MAP & LOCATION INIT ---
+    let map;
+    let userMarker;
 
-    // --- INITIALIZATION ---
-    function init() {
-        setupThemeToggle();
-        showSkeletons();
-        
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => fetchTelemetry(pos.coords.latitude, pos.coords.longitude, "High"),
-                (err) => {
-                    console.warn("GPS Denied. Using regional defaults.", err);
-                    fetchTelemetry(CONFIG.defaultLocation.lat, CONFIG.defaultLocation.lon, "Estimated");
-                },
-                { timeout: 10000, enableHighAccuracy: true }
-            );
+    function initMap(lat, lon) {
+        if (!map) {
+            map = L.map('disasterMap').setView([lat, lon], 10);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            userMarker = L.marker([lat, lon]).addTo(map).bindPopup("Your Location").openPopup();
         } else {
-            fetchTelemetry(CONFIG.defaultLocation.lat, CONFIG.defaultLocation.lon, "Estimated");
+            map.setView([lat, lon], 10);
+            userMarker.setLatLng([lat, lon]);
         }
-
-        // Auto-refresh loop
-        setInterval(() => init(), CONFIG.refreshInterval);
     }
 
-    // --- THEME MANAGEMENT ---
-    function setupThemeToggle() {
-        DOM.themeToggle.addEventListener('click', () => {
-            const root = document.documentElement;
-            const isDark = root.getAttribute('data-theme') === 'dark';
-            root.setAttribute('data-theme', isDark ? 'light' : 'dark');
-            DOM.themeToggle.textContent = isDark ? '🌙' : '☀️';
-            DOM.themeToggle.setAttribute('aria-label', isDark ? 'Switch to dark mode' : 'Switch to light mode');
-        });
-    }
+    // Fetch Location & Weather
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        
+        initMap(lat, lon); // Build Live Map
 
-    // --- DATA FETCHING ARCHITECTURE ---
-    async function fetchTelemetry(lat, lon, gpsConfidence) {
         try {
-            // Concurrent fetching for Performance Optimization
-            const [weatherRes, geoRes] = await Promise.all([
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,precipitation,weather_code&timezone=auto`),
-                fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
-            ]);
-
-            if (!weatherRes.ok) throw new Error("Meteorological API failed");
-
-            const weatherData = await weatherRes.json();
+            // Reverse Geocode for City/Country
+            const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
             const geoData = await geoRes.json();
+            
+            document.getElementById('geoCity').textContent = `${geoData.city || geoData.locality || "Unknown City"}`;
+            document.getElementById('geoRegion').textContent = `${geoData.principalSubdivision || "Unknown State"}, ${geoData.countryName || "Unknown Country"}`;
 
-            processDataEngine(weatherData.current, geoData, lat, lon, gpsConfidence);
+            // Load Country Specific Numbers (Defaults to IN structure if unknown)
+            const countryCode = geoData.countryCode || "IN";
+            renderEmergencyNumbers(countryCode);
 
-        } catch (error) {
-            console.error("Agent Critical Failure:", error);
-            DOM.weatherCard.innerHTML = `<div style="padding:20px; color:var(--risk-critical); text-align:center;">
-                <strong>System Offline:</strong> Unable to establish handshake with telemetry nodes.
-            </div>`;
+            // Fetch Advanced Weather Matrix
+            const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation&timezone=auto`);
+            const weatherData = await weatherRes.json();
+            
+            processRiskEngine(weatherData.current, lat, lon);
+
+        } catch (err) {
+            console.error(err);
+            document.getElementById('geoCity').textContent = "Connection Error";
+            renderEmergencyNumbers("IN"); // Safe Fallback
         }
+    }, (err) => {
+        console.error("GPS Denied", err);
+        document.getElementById('geoCity').textContent = "GPS Denied";
+        renderEmergencyNumbers("IN");
+    });
+
+    function renderEmergencyNumbers(code) {
+        const numbers = EMERGENCY_DB[code] || EMERGENCY_DB["DEFAULT"];
+        document.getElementById('emergencyGrid').innerHTML = `
+            <div style="background: rgba(239, 68, 68, 0.2); padding: 15px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
+                🚨 Disaster/General: <strong style="font-size: 18px; float: right;">${numbers.disaster}</strong>
+            </div>
+            <div style="background: rgba(59, 130, 246, 0.2); padding: 15px; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                🚓 Police: <strong style="font-size: 18px; float: right;">${numbers.police}</strong>
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.2); padding: 15px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                🚑 Ambulance: <strong style="font-size: 18px; float: right;">${numbers.ambulance}</strong>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.2); padding: 15px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                🔥 Fire: <strong style="font-size: 18px; float: right;">${numbers.fire}</strong>
+            </div>
+        `;
     }
 
-    // --- AI REASONING & DISASTER MATRIX ---
-    function processDataEngine(weather, geo, lat, lon, confidence) {
-        const locationStr = `${geo.city || geo.locality || "Unknown Region"}, ${geo.countryName || "Unknown Country"}`;
-        const countryCode = geo.countryCode || "DEFAULT";
-
-        // Advanced AI Compound Analysis
-        const alerts = evaluateRiskMatrix(weather);
-        
-        updateWeatherUI(weather, locationStr, confidence);
-        updateSummaryStats(alerts);
-        updateEmergencyRouting(countryCode);
-        renderAlertsLog(alerts, weather, locationStr);
-    }
-
-    function evaluateRiskMatrix(w) {
+    // --- 5. AI RISK ENGINE & WARNING SYSTEM ---
+    function processRiskEngine(w, lat, lon) {
         const alerts = [];
-        const t = w.apparent_temperature;
-        const wind = w.wind_speed_10m;
-        const rain = w.precipitation || 0;
-        const hum = w.relative_humidity_2m;
+        let totalRisk = 0;
 
-        // 1. Heatwave Engine (Compound humidity factor)
-        let heatRiskScore = (t / 50) * 100; 
-        if (hum > 70 && t > 35) heatRiskScore += 15; // High humidity exacerbates heat
-        
-        if (heatRiskScore >= 90) alerts.push(compileAgentReport("🔥 Extreme Heatwave", "critical", heatRiskScore, "Temperature and humidity combination exceeds biological limits.", "High risk of heatstroke. Grid power failures possible due to AC load.", "Temperatures will remain critically high. Hydration is mandatory."));
-        else if (heatRiskScore >= 75) alerts.push(compileAgentReport("🔥 Severe Heat", "high", heatRiskScore, "Thermal readings significantly above baseline.", "Increased risk of exhaustion for vulnerable demographics.", "Monitor local advisories. Limit outdoor exposure."));
-
-        // 2. Storm Engine
-        let stormRiskScore = (wind / 120) * 100;
-        if (stormRiskScore >= 90) alerts.push(compileAgentReport("🌪️ Hurricane Force", "critical", stormRiskScore, "Catastrophic wind velocity detected.", "Widespread structural damage and power outages imminent.", "Seek reinforced shelter immediately."));
-        else if (stormRiskScore >= 65) alerts.push(compileAgentReport("⛈️ Severe Storm", "high", stormRiskScore, "Wind speeds breaching structural safety thresholds.", "Potential for flying debris and localized outages.", "Secure loose outdoor objects. Stay indoors."));
-
-        // 3. Flood Engine
-        let floodRiskScore = (rain / 100) * 100;
-        if (floodRiskScore >= 90) alerts.push(compileAgentReport("🌊 Flash Flood", "critical", floodRiskScore, "Precipitation volume exceeds drainage capacity.", "Road blockages, infrastructure submersion, and property damage.", "Evacuate low-lying areas immediately."));
-        else if (floodRiskScore >= 50) alerts.push(compileAgentReport("💧 Heavy Rainfall", "medium", floodRiskScore, "Sustained localized precipitation.", "Minor waterlogging in urban zones.", "Avoid driving through standing water."));
-
-        // Baseline
-        if (alerts.length === 0) {
-            alerts.push(compileAgentReport("✅ Nominal Conditions", "low", 15, "All meteorological vectors within nominal tolerances.", "No major environmental impacts predicted.", "Maintain standard operational awareness."));
+        // Flood Prediction Matrix
+        if (w.precipitation > 50) {
+            alerts.push({ type: "🌊 Flash Flood Risk", severity: "critical", msg: "Severe precipitation detected. Infrastructure flooding imminent." });
+            totalRisk += 40;
+            if(map) L.circle([lat, lon], {color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.4, radius: 5000}).addTo(map);
         }
 
-        const severitySort = { "critical": 4, "high": 3, "medium": 2, "low": 1 };
-        return alerts.sort((a, b) => severitySort[b.severity] - severitySort[a.severity]);
+        // Heatwave + Humidity Matrix
+        if (w.temperature_2m > 40 && w.relative_humidity_2m > 60) {
+            alerts.push({ type: "🔥 Wet-Bulb Heatwave", severity: "critical", msg: "Lethal combination of heat and humidity detected." });
+            totalRisk += 45;
+            if(map) L.circle([lat, lon], {color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.4, radius: 8000}).addTo(map);
+        } else if (w.temperature_2m > 35) {
+            alerts.push({ type: "🌡️ High Heat Alert", severity: "medium", msg: "Elevated thermal conditions. Hydration advised." });
+            totalRisk += 20;
+        }
+
+        if (w.wind_speed_10m > 60) {
+            alerts.push({ type: "🌪️ Severe Storm", severity: "high", msg: "Damaging wind speeds detected. Secure loose items." });
+            totalRisk += 30;
+        }
+
+        if (alerts.length === 0) {
+            alerts.push({ type: "✅ Optimal Conditions", severity: "low", msg: "All local telemetry nominal. No immediate threats." });
+            totalRisk = 5;
+        }
+
+        // Generate Disaster Readiness Score
+        const safetyScore = Math.max(0, 100 - totalRisk);
+        document.getElementById('safetyScoreTxt').textContent = `${safetyScore}`;
+        
+        // Update the circular gradient ring color based on score
+        const ringColor = safetyScore > 80 ? 'var(--safe)' : safetyScore > 50 ? 'var(--warning)' : 'var(--danger)';
+        document.getElementById('safetyScoreRing').style.background = `conic-gradient(${ringColor} ${safetyScore}%, var(--glass-border) 0)`;
+
+        // Render Alerts & Audio/Vibration
+        renderAlerts(alerts);
+        triggerHardwareWarnings(alerts[0].severity);
     }
 
-    function compileAgentReport(type, severity, rawScore, reasoning, impact, forecast) {
-        return {
-            type, severity, 
-            score: Math.min(Math.round(rawScore), 99),
-            confidence: Math.floor(Math.random() * (99 - 88 + 1)) + 88, // AI Confidence metric
-            timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-            reasoning, impact, forecast
-        };
-    }
-
-    // --- DOM UPDATES & UX ---
-    function updateWeatherUI(w, location, gpsConfidence) {
-        DOM.weatherCard.innerHTML = `
-            <div class="location-display" aria-live="polite">
-                📍 ${location} 
-                <span class="confidence-badge" title="Location Accuracy">GPS: ${gpsConfidence}</span>
+    function renderAlerts(alerts) {
+        const container = document.getElementById('alertsContainer');
+        container.innerHTML = alerts.map(a => `
+            <div class="alert-item" style="border-left-color: ${a.severity === 'critical' ? 'var(--danger)' : a.severity === 'high' ? 'var(--warning)' : 'var(--safe)'}">
+                <strong>${a.type}</strong><br>
+                <span style="font-size:13px; color: var(--text-muted);">${a.msg}</span>
             </div>
-            <div class="weather-grid">
-                <div class="weather-item">
-                    <div class="weather-label" id="lbl-temp">Feels Like</div>
-                    <div class="weather-value" aria-labelledby="lbl-temp">${w.apparent_temperature}</div>
-                    <div class="weather-unit">°C</div>
-                </div>
-                <div class="weather-item">
-                    <div class="weather-label" id="lbl-wind">Wind Speed</div>
-                    <div class="weather-value" aria-labelledby="lbl-wind">${w.wind_speed_10m}</div>
-                    <div class="weather-unit">km/h</div>
-                </div>
-                <div class="weather-item">
-                    <div class="weather-label" id="lbl-hum">Humidity</div>
-                    <div class="weather-value" aria-labelledby="lbl-hum">${w.relative_humidity_2m}</div>
-                    <div class="weather-unit">%</div>
-                </div>
+        `).join('');
+        
+        // Copilot Output
+        document.getElementById('reasoningContent').innerHTML = `
+            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; border-left: 4px solid var(--accent);">
+                <p style="font-size: 12px; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; font-weight: 800;">Copilot Diagnostic:</p>
+                <p style="font-size: 15px; line-height: 1.5;">${alerts[0].msg} Local environmental factors are being continuously monitored against structural safety thresholds.</p>
             </div>
         `;
     }
 
-    function updateSummaryStats(alerts) {
-        document.getElementById("criticalCount").textContent = alerts.filter(a => a.severity === "critical").length;
-        document.getElementById("highCount").textContent = alerts.filter(a => a.severity === "high").length;
-        document.getElementById("mediumCount").textContent = alerts.filter(a => a.severity === "medium").length;
-        document.getElementById("lowCount").textContent = alerts.filter(a => a.severity === "low").length;
-        document.getElementById("alertCountBadge").textContent = alerts.length;
+    // --- 6. HARDWARE WARNINGS (Audio & Vibration) ---
+    function triggerHardwareWarnings(severity) {
+        if (severity === 'critical') {
+            // Vibrate pattern: SOS (... --- ...) - works on Android Chrome
+            if (navigator.vibrate) navigator.vibrate([100,30,100,30,100,200,300,30,300,30,300,200,100,30,100,30,100]);
+        }
     }
 
-    function renderAlertsLog(alerts, weather, location) {
-        DOM.alertsContainer.innerHTML = "";
+    // --- 7. SOS EMERGENCY MODE ---
+    document.getElementById('sosBtn').addEventListener('click', () => {
+        document.body.classList.toggle('emergency-mode-active');
         
-        alerts.forEach((alert, index) => {
-            const el = document.createElement("div");
-            el.className = `alert-item ${index === 0 ? 'active' : ''}`;
-            el.setAttribute("tabindex", "0");
-            el.innerHTML = `
-                <div class="alert-type">${alert.type} 
-                    <span style="font-size:11px; text-transform:uppercase; color:var(--risk-${alert.severity})">${alert.severity}</span>
+        const audio = document.getElementById('sirenAudio');
+        const lang = document.getElementById('langSelect').value;
+        const activeText = i18n[lang].sosActive || i18n['en'].sosActive;
+
+        if (document.body.classList.contains('emergency-mode-active')) {
+            audio.play().catch(e => console.log("Audio play requires user interaction."));
+            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]); // Heavy pulse
+            
+            document.getElementById('reasoningContent').innerHTML = `
+                <div style="background: rgba(239, 68, 68, 0.2); padding: 20px; border-radius: 12px; text-align: center; border: 2px solid var(--danger);">
+                    <h2 style="color: white; margin-bottom: 10px;">⚠️ ${activeText}</h2>
+                    <p>Broadcasting to local authorities...</p>
                 </div>
-                <div class="alert-time">Detected at ${alert.timestamp}</div>
             `;
-
-            // Keyboard Accessibility
-            el.addEventListener("keypress", (e) => { if (e.key === 'Enter') el.click(); });
-            
-            el.addEventListener("click", () => {
-                document.querySelectorAll('.alert-item').forEach(node => node.classList.remove('active'));
-                el.classList.add('active');
-                renderAIAnalysis(alert);
-            });
-
-            DOM.alertsContainer.appendChild(el);
-            if (index === 0) renderAIAnalysis(alert);
-        });
-    }
-
-    function renderAIAnalysis(alert) {
-        const colorMap = { "critical": "var(--risk-critical)", "high": "var(--risk-high)", "medium": "var(--risk-medium)", "low": "var(--risk-low)" };
-        const meterColor = colorMap[alert.severity];
-
-        // Hackathon Feature: AI Analysis Card
-        DOM.reasoningContent.innerHTML = `
-            <div class="metric-row">
-                <span style="font-size:12px; font-weight:600;">AI RISK SCORE</span>
-                <div class="risk-meter-bg"><div class="risk-meter-fill" style="width: ${alert.score}%; background: ${meterColor};"></div></div>
-                <span style="font-size:14px; font-weight:700;">${alert.score}/100</span>
-            </div>
-            <div class="metric-row" style="margin-bottom: 24px;">
-                <span style="font-size:12px; font-weight:600;">CONFIDENCE</span>
-                <div class="risk-meter-bg"><div class="risk-meter-fill" style="width: ${alert.confidence}%; background: var(--accent-brand);"></div></div>
-                <span style="font-size:14px; font-weight:700;">${alert.confidence}%</span>
-            </div>
-
-            <div class="ai-analysis-block">
-                <h4>Why AI Triggered This Alert</h4>
-                <p>${alert.reasoning}</p>
-            </div>
-            
-            <div class="ai-analysis-block" style="border-left-color: ${meterColor};">
-                <h4>Predicted Impact</h4>
-                <p>${alert.impact}</p>
-            </div>
-
-            <div class="ai-analysis-block" style="border-left-color: var(--text-muted); background: transparent; border: 1px solid var(--border);">
-                <h4>Next 24 Hours Forecast</h4>
-                <p>${alert.forecast}</p>
-            </div>
-        `;
-
-        renderDynamicActions(alert.severity);
-    }
-
-    function renderDynamicActions(severity) {
-        const actionMap = {
-            "critical": ["Execute immediate evacuation protocol.", "Isolate main power grids to prevent electrical fires.", "Deploy emergency rationing systems.", "Establish contact with national response units."],
-            "high": ["Prepare secondary evacuation routes.", "Ensure backup power systems are fully charged.", "Secure loose structural elements.", "Monitor local broadcast frequencies continuously."],
-            "medium": ["Elevate facility awareness protocols.", "Conduct routine checks of emergency supplies.", "Clear drainage systems of debris."],
-            "low": ["Standard operational parameters apply.", "Log routine system maintenance.", "No immediate action required."]
-        };
-
-        DOM.actionsContent.innerHTML = `<ul class="actions-list">
-            ${actionMap[severity].map(act => `<li class="action-item">${act}</li>`).join('')}
-        </ul>`;
-    }
-
-    // --- SMART HELPLINES INJECTION ---
-    function updateEmergencyRouting(countryCode) {
-        if (!DOM.resourcesGrid) return;
-        const data = EMERGENCY_DB[countryCode] || EMERGENCY_DB["DEFAULT"];
-        
-        DOM.resourcesGrid.innerHTML = `
-            <div class="resource-card">
-                <h3>📍 ${data.country} Emergency Routing</h3>
-                <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Auto-detected regional numbers</p>
-                ${data.generic ? `<span class="contact-number">National Emergency: ${data.generic}</span>` : ''}
-                ${data.police ? `<span class="contact-number" style="font-size:16px;">Police: ${data.police}</span>` : ''}
-                ${data.ambulance ? `<span class="contact-number" style="font-size:16px;">Ambulance: ${data.ambulance}</span>` : ''}
-            </div>
-            <div class="resource-card">
-                <h3>📋 Local Preparedness</h3>
-                <ul class="actions-list" style="margin-top:12px;">
-                    <li class="action-item" style="padding:8px; font-size:12px;">Keep government IDs waterproofed</li>
-                    <li class="action-item" style="padding:8px; font-size:12px;">Maintain 72-hour water supply</li>
-                    <li class="action-item" style="padding:8px; font-size:12px;">Identify structural safe zones</li>
-                </ul>
-            </div>
-        `;
-    }
-
-    // --- UX UTILITIES ---
-    function showSkeletons() {
-        DOM.weatherCard.innerHTML = `
-            <div class="skeleton skeleton-title"></div>
-            <div class="weather-grid">
-                <div class="weather-item"><div class="skeleton skeleton-text" style="height:30px"></div></div>
-                <div class="weather-item"><div class="skeleton skeleton-text" style="height:30px"></div></div>
-                <div class="weather-item"><div class="skeleton skeleton-text" style="height:30px"></div></div>
-            </div>
-        `;
-        DOM.alertsContainer.innerHTML = `<div class="skeleton skeleton-title" style="width:100%; height:60px;"></div><div class="skeleton skeleton-title" style="width:100%; height:60px;"></div>`;
-    }
-
-    // Boot sequence
-    init();
+        } else {
+            audio.pause();
+            audio.currentTime = 0;
+            if (navigator.vibrate) navigator.vibrate(0); // Stop vibration
+            // Let the next refresh cycle reset the reasoning UI
+            document.getElementById('reasoningContent').innerHTML = "Canceling SOS Broadcast... resetting UI.";
+        }
+    });
 });
