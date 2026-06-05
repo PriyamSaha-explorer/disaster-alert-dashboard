@@ -7,7 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css">
-    <link rel="manifest" href="manifest.json"> </head>
+    <link rel="manifest" href="manifest.json">
+</head>
 <body>
     <audio id="sirenAudio" src="https://actions.google.com/sounds/v1/alarms/warning_siren.ogg" preload="auto"></audio>
 
@@ -16,7 +17,7 @@
 
         <header class="header glass-panel">
             <div class="header-content">
-                <h1 class="app-title">⚠️ Intelligence Platform</h1>
+                <h1 class="app-title" data-i18n="appTitle">⚠️ Intelligence Platform</h1>
                 <div class="header-controls">
                     <select id="langSelect" class="lang-selector">
                         <option value="en">English</option>
@@ -25,7 +26,7 @@
                     </select>
                     <div class="status-indicator">
                         <span id="networkStatus" class="status-dot animate-pulse"></span>
-                        <span id="networkText">Online</span>
+                        <span id="networkText" data-i18n="online">Online</span>
                     </div>
                 </div>
             </div>
@@ -47,7 +48,7 @@
             </section>
 
             <section class="glass-card map-section">
-                <h3>🗺️ Live Threat Map</h3>
+                <h3 data-i18n="liveMap">🗺️ Live Threat Map</h3>
                 <div id="disasterMap" class="map-container"></div>
             </section>
 
@@ -59,12 +60,12 @@
 
             <div class="content-grid">
                 <aside class="alerts-panel glass-card">
-                    <h2>📋 Active Threats</h2>
+                    <h2 data-i18n="activeThreats">📋 Active Threats</h2>
                     <div id="alertsContainer" class="alerts-container"></div>
                 </aside>
 
                 <div class="analysis-column glass-card">
-                    <h2>🤖 Copilot Analysis</h2>
+                    <h2 data-i18n="copilotAnalysis">🤖 Copilot Analysis</h2>
                     <div id="reasoningContent">Awaiting data stream...</div>
                 </div>
             </div>
