@@ -6,20 +6,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const actionsContent = document.getElementById("actionsContent");
     const riskMeterContainer = document.getElementById("riskMeterContainer");
     const riskMeterFill = document.getElementById("riskMeterFill");
+    const themeToggle = document.getElementById("themeToggle");
 
-    // Utility: Sleep function for Agentic UI streaming
+    // Dark Mode Toggle Logic
+    themeToggle.addEventListener('click', () => {
+        const root = document.documentElement;
+        if (root.getAttribute('data-theme') === 'dark') {
+            root.removeAttribute('data-theme');
+            themeToggle.textContent = '🌙';
+        } else {
+            root.setAttribute('data-theme', 'dark');
+            themeToggle.textContent = '☀️';
+        }
+    });
+
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     // Initialize App
-    weatherCard.innerHTML = `
-        <div class="weather-loading">
-            <div class="spinner"></div>
-            <p>Initializing Copilot... Requesting satellite telemetry...</p>
-        </div>
-    `;
-
     if (!navigator.geolocation) {
-        weatherCard.innerHTML = "<div class='weather-error'>Geolocation architecture not supported by this browser.</div>";
+        weatherCard.innerHTML = "<div style='color:var(--danger); padding:20px; text-align:center;'>Geolocation not supported by this browser.</div>";
         return;
     }
 
@@ -29,52 +34,51 @@ document.addEventListener("DOMContentLoaded", () => {
         const lon = position.coords.longitude;
 
         try {
-            // Expanded API to include precipitation for Flood detection
+            // Using apparent_temperature (Feels Like) and timezone=auto for accurate local data
             const response = await fetch(
-                `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,precipitation`
+                `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=apparent_temperature,wind_speed_10m,precipitation&timezone=auto`
             );
             const data = await response.json();
 
-            const temp = data.current.temperature_2m;
+            // Extract the correct updated variables
+            const temp = data.current.apparent_temperature;
             const wind = data.current.wind_speed_10m;
             const rain = data.current.precipitation || 0; 
 
-            // Update Weather Matrix UI
+            // Render Weather UI
             weatherCard.innerHTML = `
                 <div class="location-display">
-                    📍 Coordinates: ${lat.toFixed(4)}, ${lon.toFixed(4)}
+                    📍 Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}
                 </div>
                 <div class="weather-grid">
                     <div class="weather-item">
-                        <div class="weather-label">Thermal</div>
+                        <div class="weather-label">Feels Like</div>
                         <div class="weather-value">${temp}</div>
                         <div class="weather-unit">°C</div>
                     </div>
                     <div class="weather-item">
-                        <div class="weather-label">Velocity</div>
+                        <div class="weather-label">Wind</div>
                         <div class="weather-value">${wind}</div>
                         <div class="weather-unit">km/h</div>
                     </div>
                     <div class="weather-item">
-                        <div class="weather-label">Precipitation</div>
+                        <div class="weather-label">Rain</div>
                         <div class="weather-value">${rain}</div>
                         <div class="weather-unit">mm</div>
                     </div>
                 </div>
             `;
-            document.getElementById("lastUpdate").textContent = "System Status: Matrix synced at " + new Date().toLocaleTimeString();
 
-            // ADVANCED DISASTER DETECTION ALGORITHM
             const alerts = generateRiskMatrix(temp, wind, rain);
             updateSummaryCards(alerts);
             renderAlertsPanel(alerts, temp, wind, rain, lat, lon);
 
         } catch (error) {
-            weatherCard.innerHTML = "<div class='weather-error'>Critical failure: Unable to establish API handshake with Open-Meteo.</div>";
+            weatherCard.innerHTML = "<div style='color:var(--danger); text-align:center;'>Error connecting to Open-Meteo API.</div>";
             console.error(error);
         }
     }, () => {
-        weatherCard.innerHTML = "<div class='weather-error'>Access Denied: Geolocation permissions required for threat assessment.</div>";
+        weatherCard.innerHTML = "<div style='color:var(--danger); text-align:center;'>Location access denied. Please allow GPS permissions.</div>";
     });
 
     // ---------------------------------------------------------
@@ -84,37 +88,33 @@ document.addEventListener("DOMContentLoaded", () => {
         const alerts = [];
         
         // Heatwave Logic
-        if (temp >= 45) alerts.push(createAlert("🔥 Extreme Heatwave", "critical", temp, "Temperature exceeds biological safety limits."));
-        else if (temp >= 40) alerts.push(createAlert("🔥 Heatwave", "high", temp, "Severe thermal anomaly detected."));
-        else if (temp >= 35) alerts.push(createAlert("🌡️ Elevated Heat", "medium", temp, "Above average thermal readings."));
+        if (temp >= 45) alerts.push(createAlert("🔥 Extreme Heat", "critical", "Temperature exceeds biological safety limits."));
+        else if (temp >= 40) alerts.push(createAlert("🔥 High Heatwave", "high", "Severe thermal anomaly detected."));
+        else if (temp >= 36) alerts.push(createAlert("🌡️ Elevated Heat", "medium", "Above average thermal readings."));
 
         // Storm Logic
-        if (wind >= 120) alerts.push(createAlert("🌪️ Hurricane Force", "critical", wind, "Catastrophic wind velocities detected."));
-        else if (wind >= 80) alerts.push(createAlert("⛈️ Severe Storm", "high", wind, "Structural damage thresholds breached."));
-        else if (wind >= 50) alerts.push(createAlert("💨 High Winds", "medium", wind, "Elevated wind velocity."));
+        if (wind >= 100) alerts.push(createAlert("🌪️ Hurricane Force", "critical", "Catastrophic wind velocities detected."));
+        else if (wind >= 70) alerts.push(createAlert("⛈️ Severe Storm", "high", "Structural damage thresholds breached."));
+        else if (wind >= 40) alerts.push(createAlert("💨 High Winds", "medium", "Elevated wind velocity."));
 
         // Flood Logic
-        if (rain >= 150) alerts.push(createAlert("🌊 Flash Flood", "critical", rain, "Catastrophic precipitation volume."));
-        else if (rain >= 100) alerts.push(createAlert("💧 Flood Warning", "high", rain, "Drainage infrastructure failure imminent."));
-        else if (rain >= 50) alerts.push(createAlert("🌧️ Heavy Rain", "medium", rain, "Sustained precipitation detected."));
+        if (rain >= 100) alerts.push(createAlert("🌊 Flash Flood", "critical", "Catastrophic precipitation volume."));
+        else if (rain >= 50) alerts.push(createAlert("💧 Flood Warning", "high", "Drainage infrastructure failure imminent."));
+        else if (rain >= 15) alerts.push(createAlert("🌧️ Heavy Rain", "medium", "Sustained precipitation detected."));
 
-        // Baseline
+        // Baseline Normal
         if (alerts.length === 0) {
-            alerts.push(createAlert("✅ Nominal Conditions", "low", 0, "All meteorological parameters within safe tolerances."));
+            alerts.push(createAlert("✅ Nominal Conditions", "low", "All meteorological parameters within safe tolerances."));
         }
 
-        // Sort by severity (critical first)
         const severityMap = { "critical": 4, "high": 3, "medium": 2, "low": 1 };
         return alerts.sort((a, b) => severityMap[b.severity] - severityMap[a.severity]);
     }
 
-    function createAlert(type, severity, metric, baselineReason) {
-        return { type, severity, metric, baselineReason, timestamp: new Date().toLocaleTimeString() };
+    function createAlert(type, severity, baselineReason) {
+        return { type, severity, baselineReason, timestamp: new Date().toLocaleTimeString() };
     }
 
-    // ---------------------------------------------------------
-    // UI UPDATES
-    // ---------------------------------------------------------
     function updateSummaryCards(alerts) {
         document.getElementById("criticalCount").textContent = alerts.filter(a => a.severity === "critical").length;
         document.getElementById("highCount").textContent = alerts.filter(a => a.severity === "high").length;
@@ -130,111 +130,90 @@ document.addEventListener("DOMContentLoaded", () => {
             const alertDiv = document.createElement("div");
             alertDiv.className = `alert-item ${index === 0 ? 'active' : ''}`;
             alertDiv.innerHTML = `
-                <div class="alert-header">
-                    <div class="alert-type">${alert.type} <span class="alert-severity ${alert.severity}">${alert.severity}</span></div>
-                </div>
-                <div class="alert-location">Telemetry Node: Local</div>
-                <div class="alert-time">${alert.timestamp}</div>
+                <div class="alert-type">${alert.type}</div>
+                <div class="alert-time">Logged at ${alert.timestamp}</div>
             `;
 
             alertDiv.addEventListener("click", () => {
-                // Remove active class from all, add to clicked
                 document.querySelectorAll('.alert-item').forEach(el => el.classList.remove('active'));
                 alertDiv.classList.add('active');
-                
-                // Trigger the AI Reasoning Agent
                 runAIAgent(alert, temp, wind, rain, lat, lon);
             });
 
             alertsContainer.appendChild(alertDiv);
-
-            // Auto-click the highest priority alert on load
-            if (index === 0) {
-                runAIAgent(alert, temp, wind, rain, lat, lon);
-            }
+            if (index === 0) runAIAgent(alert, temp, wind, rain, lat, lon);
         });
     }
 
     // ---------------------------------------------------------
-    // THE AI AGENT STREAMING PROTOCOL
+    // AI AGENT STREAMING PROTOCOL
     // ---------------------------------------------------------
     async function runAIAgent(alert, temp, wind, rain, lat, lon) {
-        // Reset panels and show risk meter
         reasoningContent.innerHTML = `<div id="agent-log"></div>`;
-        actionsContent.innerHTML = `<div class="spinner"></div><p style="font-size:12px; color:gray; margin-top:10px;">Awaiting agent directives...</p>`;
+        actionsContent.innerHTML = `<div class="spinner"></div><p style="text-align:center; color:var(--text-muted); font-size:13px;">Compiling directives...</p>`;
         
         riskMeterContainer.classList.remove('hidden');
         riskMeterFill.style.width = "0%";
         
         const log = document.getElementById('agent-log');
-        let confidenceScore = Math.floor(Math.random() * (98 - 85 + 1)) + 85; // Random confidence between 85-98% for realism
+        let confidenceScore = Math.floor(Math.random() * (98 - 89 + 1)) + 89; 
 
-        // Step 1: Collection
-        await appendAgentStep(log, "⚡ Step 1: Data Ingestion", `Cross-referencing Open-Meteo node at [${lat.toFixed(2)}, ${lon.toFixed(2)}]...`);
+        await appendAgentStep(log, "Step 1: Data Ingestion", `Coordinates: [${lat.toFixed(2)}, ${lon.toFixed(2)}]`);
+        await appendAgentStep(log, "Step 2: Pattern Recognition", `Parameters: T:${temp}°C, W:${wind}km/h, P:${rain}mm`);
+        await appendAgentStep(log, "Step 3: Risk Calculation", `Threat vector: ${alert.type}.`);
         
-        // Step 2: Identification
-        await appendAgentStep(log, "🔍 Step 2: Pattern Recognition", `Analyzing parameters: T:${temp}°C, W:${wind}km/h, P:${rain}mm...`);
+        await sleep(300);
         
-        // Step 3: Assessment
-        await appendAgentStep(log, "📊 Step 3: Risk Calculation", `Threat vector identified as ${alert.type}. Calculating confidence score...`);
-        
-        // Finalize
-        await sleep(400);
-        
-        // Animate Risk Meter
-        const meterWidths = { "critical": "100%", "high": "75%", "medium": "50%", "low": "15%" };
+        const meterWidths = { "critical": "100%", "high": "75%", "medium": "40%", "low": "10%" };
         riskMeterFill.style.width = meterWidths[alert.severity];
 
-        // Print Final Report
+        // Ensure meter color matches severity
+        const colorMap = { "critical": "var(--danger)", "high": "var(--warning)", "medium": "var(--accent-blue)", "low": "var(--accent-green)"};
+        riskMeterFill.style.background = colorMap[alert.severity];
+
         const finalReport = document.createElement('div');
         finalReport.className = 'fade-in-report';
         finalReport.innerHTML = `
-            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
-            <h4 style="margin-bottom:8px;">Agent Assessment [${alert.severity.toUpperCase()}]</h4>
-            <p style="font-size:13px; line-height: 1.5; color: var(--text-secondary);">
-                <strong>Confidence: ${confidenceScore}%</strong><br>
-                ${alert.baselineReason} The matrix indicates a compound probability of localized disruption. Immediate adherence to protocol is advised.
-            </p>
+            <strong>Agent Assessment [${alert.severity.toUpperCase()}]</strong><br>
+            <span style="color:var(--text-muted); font-size:13px;">Confidence: ${confidenceScore}%</span><br><br>
+            ${alert.baselineReason} The automated matrix indicates calculated probabilities of localized effects. Adherence to standard protocol is advised.
         `;
         log.appendChild(finalReport);
 
-        // Populate Actions dynamically based on severity
-        renderDynamicActions(alert.severity, alert.type);
+        renderDynamicActions(alert.severity);
     }
 
     async function appendAgentStep(container, title, message) {
         const stepDiv = document.createElement('div');
         stepDiv.className = 'agent-step-thinking';
-        stepDiv.innerHTML = `<strong>${title}</strong>: <br><span style="color:var(--text-tertiary)">Processing...</span>`;
+        stepDiv.innerHTML = `⚙️ ${title}...`;
         container.appendChild(stepDiv);
         
-        await sleep(700); // Simulated thinking time
+        await sleep(600); 
         
         stepDiv.className = 'agent-step-complete';
-        stepDiv.innerHTML = `<strong>${title}</strong>: <br>${message}`;
+        stepDiv.innerHTML = `✅ ${title}: <br><span style="color:var(--text-muted); margin-left: 20px;">${message}</span>`;
     }
 
-    function renderDynamicActions(severity, type) {
+    function renderDynamicActions(severity) {
         const actionMap = {
             "critical": [
-                "🚨 INITIATE IMMEDIATE EVACUATION PROTOCOL",
-                "⚠️ Secure critical infrastructure and disconnect main power",
-                "📡 Contact local emergency command center immediately",
-                "🎒 Deploy Tier-1 survival logistics kit"
+                "INITIATE IMMEDIATE EVACUATION PROTOCOL",
+                "Secure critical infrastructure and disconnect main power",
+                "Contact local emergency command center immediately"
             ],
             "high": [
-                "⚠️ Prepare for potential mandated evacuation",
-                "🔋 Charge all communication and secondary power devices",
-                "🚗 Relocate vehicles to secure, elevated terrain",
-                "📻 Monitor dedicated emergency broadcast frequencies"
+                "Prepare for potential mandated evacuation",
+                "Charge all communication and secondary power devices",
+                "Monitor dedicated emergency broadcast frequencies"
             ],
             "medium": [
-                "👀 Elevate situational awareness",
-                "📦 Inventory emergency provisions",
-                "📱 Ensure communication channels are active"
+                "Elevate situational awareness",
+                "Inventory emergency provisions",
+                "Ensure communication channels are active"
             ],
             "low": [
-                "✅ Maintain standard operational awareness",
+                "Maintain standard operational awareness",
                 "Routine checks of emergency supplies recommended",
                 "No immediate action required"
             ]
