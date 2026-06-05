@@ -208,6 +208,90 @@ body {
     padding: var(--spacing-xl) var(--spacing-lg);
 }
 
+/* Weather Section */
+.weather-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.weather-card {
+    background-color: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-light);
+    border-left: 4px solid var(--info);
+}
+
+.weather-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    text-align: center;
+}
+
+.weather-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.weather-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.weather-label {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    letter-spacing: 0.5px;
+}
+
+.weather-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.weather-unit {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.weather-condition {
+    grid-column: 1 / -1;
+    padding: var(--spacing-md);
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.location-display {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.weather-error {
+    background-color: rgba(220, 38, 38, 0.1);
+    border: 1px solid var(--error);
+    color: var(--error);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
 /* Summary Section */
 .summary-section {
     margin-bottom: var(--spacing-xl);
@@ -848,4 +932,4 @@ body {
     .controls-section {
         display: none;
     }
-  }
+}
